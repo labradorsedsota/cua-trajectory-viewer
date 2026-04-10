@@ -117,6 +117,23 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
     rawResp: resp,
   }));
 
+  // Extract initial thinking from history_resps[0] directly (before skip logic)
+  // Always try, regardless of skipCount
+  let initialThinking: string | undefined;
+  const resp0 = resultJson.history_resps[0] || '';
+  // Priority 1: non-empty <think> content
+  const think0Match = resp0.match(/<think>([\s\S]*?)<\/think>/);
+  if (think0Match && think0Match[1].trim()) {
+    initialThinking = think0Match[1].trim();
+  } else {
+    // Priority 2: [THINKING] block from raw_response
+    const thinking0Match = resp0.match(/\[THINKING\]\s*([\s\S]*?)(?:\[TOOL_USE\]|$)/);
+    if (thinking0Match && thinking0Match[1].trim()) {
+      initialThinking = thinking0Match[1].trim();
+    }
+  }
+  console.log('[CTV] initialThinking:', initialThinking);
+
   // Determine how many leading entries to skip:
   // An entry is "initial screenshot" if think is empty AND all actions are screenshot/tool_use with action=screenshot
   let skipCount = 0;
@@ -128,29 +145,6 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
       skipCount++;
     } else {
       break; // stop at first real step
-    }
-  }
-
-  // Extract initial thinking from skipped entries
-  let initialThinking: string | undefined;
-  if (skipCount > 0) {
-    const parts: string[] = [];
-    for (let s = 0; s < skipCount; s++) {
-      const entry = allParsed[s];
-      // Priority 1: <think> content
-      if (entry.parsed.think) {
-        parts.push(entry.parsed.think);
-      } else {
-        // Priority 2: [THINKING] from the raw history_resps string directly
-        // (avoids JSON parse issues with Python-style single-quote dicts)
-        const thinkMatch = entry.rawResp.match(/\[THINKING\]\s*([\s\S]*?)(?:\[TOOL_USE\]|$)/);
-        if (thinkMatch && thinkMatch[1].trim()) {
-          parts.push(thinkMatch[1].trim());
-        }
-      }
-    }
-    if (parts.length > 0) {
-      initialThinking = parts.join('\n\n');
     }
   }
 
