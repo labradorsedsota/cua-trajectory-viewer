@@ -21,6 +21,7 @@ export interface StepData {
 export interface TrajectoryData {
   task: string;
   mosstid?: string;
+  initialThinking?: string;               // thinking from skipped history_resps[0]
   steps: StepData[];
   elapsedTime: number;
   stepCount: number;

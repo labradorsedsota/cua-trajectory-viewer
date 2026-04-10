@@ -131,6 +131,31 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
     }
   }
 
+  // Extract initial thinking from skipped entries
+  let initialThinking: string | undefined;
+  if (skipCount > 0) {
+    const parts: string[] = [];
+    for (let s = 0; s < skipCount; s++) {
+      const entry = allParsed[s];
+      // Priority 1: <think> content
+      if (entry.parsed.think) {
+        parts.push(entry.parsed.think);
+      } else {
+        // Priority 2: [THINKING] from raw_response inside actions
+        for (const action of entry.parsed.actions) {
+          const raw = action.raw_response || '';
+          const thinkMatch = raw.match(/\[THINKING\]\s*([\s\S]*?)(?:\[TOOL_USE\]|$)/);
+          if (thinkMatch && thinkMatch[1].trim()) {
+            parts.push(thinkMatch[1].trim());
+          }
+        }
+      }
+    }
+    if (parts.length > 0) {
+      initialThinking = parts.join('\n\n');
+    }
+  }
+
   // Screenshot files are numbered sequentially and correspond 1:1 to the
   // *visible* steps (after skipping leading screenshot-only entries).
   // So Step 1 → 1.png, Step 2 → 2.png, etc.
@@ -154,6 +179,7 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
   return {
     task: cleanTask,
     mosstid,
+    initialThinking,
     steps,
     elapsedTime: resultJson.elapsed_time_sec,
     stepCount: resultJson.step_count || resultJson.history_resps.length,

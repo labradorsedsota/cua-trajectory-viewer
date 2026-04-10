@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { TrajectoryData, StepData } from '../types';
 import { getActionLabel, getActionCode, isDoneStep, getDoneConclusion } from '../utils/parser';
 
@@ -11,6 +12,7 @@ interface InfoPanelProps {
 export default function InfoPanel({ data, step, currentStep, totalSteps }: InfoPanelProps) {
   const done = isDoneStep(step);
   const conclusion = done ? getDoneConclusion(step) : null;
+  const [initialOpen, setInitialOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden">
@@ -29,6 +31,32 @@ export default function InfoPanel({ data, step, currentStep, totalSteps }: InfoP
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+        {/* Initial Observation — collapsed by default */}
+        {data.initialThinking && (
+          <div className="rounded-xl bg-gray-50 border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setInitialOpen(!initialOpen)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-100 transition-colors"
+            >
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">🔍 初始观察</span>
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${initialOpen ? 'rotate-90' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            {initialOpen && (
+              <div className="px-4 pb-3 border-t border-gray-200">
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap break-words mt-2">
+                  {data.initialThinking}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* DONE Conclusion Badge */}
         {done && conclusion && (
           <div className={`
