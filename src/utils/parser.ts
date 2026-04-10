@@ -141,13 +141,11 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
       if (entry.parsed.think) {
         parts.push(entry.parsed.think);
       } else {
-        // Priority 2: [THINKING] from raw_response inside actions
-        for (const action of entry.parsed.actions) {
-          const raw = action.raw_response || '';
-          const thinkMatch = raw.match(/\[THINKING\]\s*([\s\S]*?)(?:\[TOOL_USE\]|$)/);
-          if (thinkMatch && thinkMatch[1].trim()) {
-            parts.push(thinkMatch[1].trim());
-          }
+        // Priority 2: [THINKING] from the raw history_resps string directly
+        // (avoids JSON parse issues with Python-style single-quote dicts)
+        const thinkMatch = entry.rawResp.match(/\[THINKING\]\s*([\s\S]*?)(?:\[TOOL_USE\]|$)/);
+        if (thinkMatch && thinkMatch[1].trim()) {
+          parts.push(thinkMatch[1].trim());
         }
       }
     }
