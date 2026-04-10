@@ -131,7 +131,7 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
     }
   }
 
-  const steps: StepData[] = allParsed.slice(skipCount).map((entry, i) => {
+  const stepsRaw = allParsed.slice(skipCount).map((entry, i) => {
     const fileNum = entry.origIndex + 1; // trajectory files are 1-indexed matching original array position
     return {
       index: i,
@@ -141,6 +141,19 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
       screenshotUrl: screenshots.get(fileNum),
       visualUrl: visualScreenshots.get(fileNum),
     };
+  });
+
+  // Fill missing screenshots by falling back to the previous step's screenshot
+  // (common for DONE steps whose screenshot file doesn't exist)
+  const steps: StepData[] = stepsRaw.map((step, i) => {
+    let { screenshotUrl, visualUrl } = step;
+    if (!screenshotUrl && i > 0) {
+      screenshotUrl = stepsRaw[i - 1].screenshotUrl;
+    }
+    if (!visualUrl && i > 0) {
+      visualUrl = stepsRaw[i - 1].visualUrl;
+    }
+    return { ...step, screenshotUrl, visualUrl };
   });
 
   const mosstid = extractMosstid(resultJson.task);
