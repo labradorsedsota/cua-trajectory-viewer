@@ -110,17 +110,36 @@ export async function parseFolder(files: FileList | File[]): Promise<TrajectoryD
     }
   }
 
-  // Parse steps
-  const steps: StepData[] = resultJson.history_resps.map((resp, i) => {
-    const { think, actions } = parseThinkAction(resp);
-    const stepNum = i + 1;
+  // Parse steps — skip leading screenshot-only entries (no real action)
+  const allParsed = resultJson.history_resps.map((resp, i) => ({
+    origIndex: i,
+    parsed: parseThinkAction(resp),
+    rawResp: resp,
+  }));
+
+  // Determine how many leading entries to skip:
+  // An entry is "initial screenshot" if think is empty AND all actions are screenshot/tool_use with action=screenshot
+  let skipCount = 0;
+  for (const entry of allParsed) {
+    const { think, actions } = entry.parsed;
+    const isScreenshotOnly = think === '' && actions.length > 0 &&
+      actions.every(a => a.input?.action === 'screenshot' || (a.action_type === 'tool_use' && a.input?.action === 'screenshot'));
+    if (isScreenshotOnly) {
+      skipCount++;
+    } else {
+      break; // stop at first real step
+    }
+  }
+
+  const steps: StepData[] = allParsed.slice(skipCount).map((entry, i) => {
+    const fileNum = entry.origIndex + 1; // trajectory files are 1-indexed matching original array position
     return {
       index: i,
-      think,
-      actions,
-      rawResp: resp,
-      screenshotUrl: screenshots.get(stepNum),
-      visualUrl: visualScreenshots.get(stepNum),
+      think: entry.parsed.think,
+      actions: entry.parsed.actions,
+      rawResp: entry.rawResp,
+      screenshotUrl: screenshots.get(fileNum),
+      visualUrl: visualScreenshots.get(fileNum),
     };
   });
 
